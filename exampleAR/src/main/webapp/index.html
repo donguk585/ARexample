@@ -284,21 +284,25 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AR.js Location-Based Duck</title>
+
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="My AR App">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="My AR App">
+    <meta name="theme-color" content="#000000">
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // (이전 MindAR.js UI 토글 로직은 이미 주석 처리되었으므로 그대로 둡니다.)
-            // const list = ["glasses1", "glasses2", "hat1", "hat2", "earring"];
-            // const visibles = [false, false, false, false, false];
-            // ... (생략) ...
-
-            // 탭 바 로직 (그대로 유지)
+            // 탭 바 로직 (이전에 사용하시던 그대로)
             const tabs = [
                 { id: "tabGallery", url: "gallery.html", text: "갤러리", icon: "assets/gallery.svg" },
                 { id: "tabStamp", url: "stamp.html", text: "스탬프", icon: "assets/stamp.svg" },
-                { id: "tabHome", url: "index.html", text: "", icon: "assets/camera.svg" },
+                { id: "tabHome", url: "index.html", text: "", icon: "assets/camera.svg" }, // 현재 페이지
                 { id: "tabInfo", url: "info.html", text: "정보", icon: "assets/info.svg" },
                 { id: "tabMy", url: "my.html", text: "마이", icon: "assets/person.svg" }
             ];
@@ -316,7 +320,9 @@
                     button.appendChild(span);
                 }
 
-                if (window.location.pathname.endsWith(tab.url)) {
+                // 현재 페이지의 탭을 selected 상태로 만듭니다.
+                if (window.location.pathname.endsWith(tab.url) ||
+                    (tab.id === "tabHome" && window.location.pathname.endsWith('/'))) { // 루트 경로 처리
                     button.classList.add("selected");
                 }
 
@@ -332,151 +338,135 @@
             });
             // 탭 바 로직 끝
 
-            // ⭐ 여기에 sceneEl 선언과 AR.js 관련 모든 JavaScript 코드를 배치합니다. ⭐
+            // AR.js 씬 초기화 및 이벤트 리스너
             const sceneEl = document.querySelector('a-scene');
 
             sceneEl.addEventListener('arReady', () => {
-                console.log("AR.js Plane detection ready!");
+                console.log("AR.js Location-Based AR system is ready!");
+                // AR 시스템이 준비되면 오리 모델을 기본적으로 보이도록 설정
+                // 사용자가 특정 위치에 가면 자동으로 나타나므로 터치 이벤트 로직은 제거됩니다.
+                const arObject = document.querySelector('#my-ar-object');
+                if (arObject) {
+                    arObject.setAttribute('visible', true);
+                    console.log("AR object should now be visible if at target location.");
+                }
             });
+
             sceneEl.addEventListener('arError', (err) => {
                 console.error("AR.js Error:", err);
             });
 
-            // A-Frame 씬 로드 후 평면 인식을 위한 이벤트 리스너 추가
-            sceneEl.addEventListener('loaded', function () { // this는 sceneEl을 가리킵니다.
-                const arAnchor = document.querySelector('#ar-anchor');
-                let arModel = arAnchor.querySelector('a-gltf-model');
+            // GPS 위치 업데이트 로그 (디버깅용)
+            sceneEl.addEventListener('gps-camera-update-position', (event) => {
+                const currentLat = event.detail.position.latitude;
+                const currentLon = event.detail.position.longitude;
+                console.log(`Current GPS Position: Lat ${currentLat}, Lon ${currentLon}`);
 
-                // 평면 인식이 시작될 때 호출 (이미 위에 등록되어 있으므로 중복 가능성 -> arReady 이벤트를 한 곳에 모으는 것이 좋음)
-                // this.addEventListener('arReady', function () {
-                //     console.log("AR.js ready for plane detection.");
-                // });
+                // 목표 위도/경도를 여기에 직접 입력 (예: 부산 해운대 해변)
+                const targetLat = 35.1591474; // ⭐⭐⭐ 실제 목표 장소의 위도 ⭐⭐⭐
+                const targetLon = 129.062589; // ⭐⭐⭐ 실제 목표 장소의 경도 ⭐⭐⭐
 
-                // 화면 탭(터치)으로 AR 객체 배치
-                document.body.addEventListener('click', function (event) {
-                    // AR.js가 평면을 감지했을 때만 실행
-                    // sceneEl은 이 스코프에서 접근 가능합니다.
-                    if (sceneEl.hasLoaded && arAnchor.object3D.visible) {
-                        console.log("Existing AR model detected, no new placement.");
-                        return;
-                    }
-
-                    // AR.js 평면 인식 성공 시 앵커 위치 이동 및 모델 표시
-                    // 간단한 테스트를 위해 arAnchor를 보이게만 합니다.
-                    arAnchor.setAttribute('visible', true);
-                    arModel.setAttribute('visible', true);
-                    console.log("AR model placed on detected surface.");
-                });
+                // (선택 사항) 현재 위치와 목표 위치 간의 거리를 계산하여 콘솔에 표시
+                const distance = calculateDistance(currentLat, currentLon, targetLat, targetLon);
+                console.log(`Distance to target: ${distance.toFixed(2)} meters`);
             });
-        }); // DOMContentLoaded 닫힘
-    </script>
 
+            // 두 GPS 좌표 간의 거리 계산 함수 (Haversine formula)
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371e3; // metres
+                const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+                const d = R * c; // in metres
+                return d;
+            }
+        });
+    </script>
     <style>
         body {
-                        margin: 0;
-                    }
+            margin: 0;
+            overflow: hidden; /* AR 씬이 전체 화면을 차지하도록 */
+        }
         .example-container {
-                        overflow: hidden;
-                        position: absolute;
-                        width: 100%;
-                        height: 100%;
-                    }
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0; /* AR 씬이 가장 아래에 */
+        }
+        /* 옵션 패널은 이제 필요 없으므로 숨깁니다. */
         .options-panel {
-                        position: fixed;
-                        left: 0;
-                        top: 0;
-                        z-index: 2;
-                        padding: 10px;
-                        display: flex;
-                        gap: 10px;
-                    }
-        .options-panel img {
-                        border: solid 2px;
-                        width: 50px;
-                        height: 50px;
-                        object-fit: cover;
-                        cursor: pointer;
-                    }
-        .options-panel img.selected {
-                        border-color: green;
-                    }
-
-        /* ⭐ 카메라 전환 버튼 스타일은 이제 필요 없으므로 제거하거나 주석 처리합니다. ⭐ */
-        /* #cameraToggleButton {
-    background-color: rgba(255, 255, 255, 0.8);
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    padding: 10px 15px;
-    font-size: 1em;
-    cursor: pointer;
-    color: #333;
-    transition: background-color 0.2s, border-color 0.2s;
-    position: fixed;
-    right: 10px;
-    top: 10px;
-    z-index: 3;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-#cameraToggleButton:hover {
-    background-color: rgba(240, 240, 240, 0.9);
-    border-color: #aaa;
-} */
+            display: none;
+        }
 
         /* --- 탭 바 스타일 --- */
         .bottom-tabs {
-                        position: fixed;
-                        left: 0; bottom: 0;
-                        width: 100%;
-                        height: 70px;
-                        background-color: #f0f0f0;
-                        z-index: 2;
-                        display: flex;
-                        justify-content: space-around;
-                        align-items: center;
-                        padding: 0;
-                        box-sizing: border-box;
-                        border-top: 1px solid #ddd;
-                    }
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 70px; /* 충분한 높이 */
+            background-color: rgba(255, 255, 255, 0.9); /* 반투명 배경 */
+            backdrop-filter: blur(5px); /* 배경 블러 효과 (현대적인 UI) */
+            z-index: 2; /* AR 씬 위에 오도록 */
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0;
+            box-sizing: border-box;
+            border-top: 1px solid #ddd;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1); /* 그림자 효과 */
+        }
         .bottom-tabs button {
-                        background-color: transparent;
-                        color: #000;
-                        border: none;
-                        padding: 5px;
-                        cursor: pointer;
-                        font-size: 12px;
-                        flex-grow: 1;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        text-align: center;
-                        height: 100%;
-                        transition: color 0.2s;
-                        user-select: none;
-                    }
+            background-color: transparent;
+            color: #666;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+            transition: color 0.2s, background-color 0.2s;
+            user-select: none; /* 드래그 방지 */
+            -webkit-tap-highlight-color: rgba(0,0,0,0); /* 탭 시 하이라이트 제거 */
+        }
         .bottom-tabs button img {
-                        width: 30px;
-                        height: 30px;
-                        object-fit: contain;
-                        margin-bottom: 2px;
-                        filter: grayscale(100%);
-                        transition: filter 0.2s;
-                    }
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            margin-bottom: 2px;
+            filter: grayscale(100%); /* 비활성 아이콘 회색 */
+            transition: filter 0.2s;
+        }
+        .bottom-tabs button span {
+            font-weight: bold;
+        }
 
         .bottom-tabs button.selected {
-                        color: #ff8c00;
-                    }
+            color: #ff8c00; /* 선택된 탭 오렌지색 */
+        }
         .bottom-tabs button.selected img {
-                        filter: none;
-                    }
+            filter: none; /* 선택된 아이콘 원본 색상 */
+        }
 
         .bottom-tabs button:hover:not(.selected) {
-                        background-color: rgba(0, 0, 0, 0.05);
-                    }
+            background-color: rgba(0, 0, 0, 0.03); /* 호버 효과 */
+        }
         .bottom-tabs button:hover:not(.selected) img {
-                        filter: grayscale(70%);
-                    }
-        .options-panel { display: none; } /* 임시로 숨김 */
+            filter: grayscale(50%); /* 호버 시 살짝 색상 */
+        }
     </style>
 </head>
 <body>
@@ -492,38 +482,24 @@
     <a-scene embedded
              arjs='sourceType: webcam; cameraFacingMode: environment; trackingMethod: best; debugUIEnabled: false;'
              vr-mode-ui="enabled: false"
-             renderer="logarithmicDepthBuffer: true;">
+             renderer="logarithmicDepthBuffer: true"
+             loading-screen="enabled: false"> <a-assets>
+        <a-asset-item id="duck" src="assets/Duck.glb"></a-asset-item>
 
-        <a-assets>
-            <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
-            <a-asset-item id="glassesModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses/scene.gltf"></a-asset-item>
-            <a-asset-item id="glassesModel2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses2/scene.gltf"></a-asset-item>
-            <a-asset-item id="hatModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat/scene.gltf"></a-asset-item>
-            <a-asset-item id="hatModel2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat2/scene.gltf"></a-asset-item>
-            <a-asset-item id="earringModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/earring/scene.gltf"></a-asset-item>
+        <img id="gallery-icon" src="assets/gallery.svg">
+        <img id="stamp-icon" src="assets/stamp.svg">
+        <img id="camera-icon" src="assets/camera.svg">
+        <img id="info-icon" src="assets/info.svg">
+        <img id="person-icon" src="assets/person.svg">
+    </a-assets>
 
-            <a-asset-item id="duck" src="assets/Duck.glb"></a-asset-item>
-        </a-assets>
+        <a-camera gps-camera rotation-reader></a-camera>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity mindar-face-target="anchorIndex: 10">
-            <a-gltf-model rotation="0 -0 0" position="0 1.0 -0.5" scale="0.35 0.35 0.35" src="#hatModel" class="hat1-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 10">
-            <a-gltf-model rotation="0 -0 0" position="0 -0.2 -0.5" scale="0.008 0.008 0.008" src="#hatModel2" class="hat2-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 168">
-            <a-gltf-model rotation="0 -0 0" position="0 0 0" scale="0.01 0.01 0.01" src="#glassesModel" class="glasses1-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        
-        <a-entity id="ar-anchor">
-            <a-gltf-model src="#duck"
-                          scale="0.7 0.7 0.7"
-                          position="-0.5 0.7 -0.2"
-                          rotation="0 -105 -10"
-                          visible="false">
-            </a-gltf-model>
+        <a-entity
+                id="my-ar-object"
+                gps-entity-place="latitude: 35.1591474; longitude: 129.062589;" scale="0.7 0.7 0.7"
+                rotation="0 -105 -10"
+                visible="false"> <a-gltf-model src="#duck"></a-gltf-model>
         </a-entity>
     </a-scene>
 </div>
