@@ -288,11 +288,13 @@
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
     <script>
-        // ... (기존 script 태그 내의 다른 코드들은 그대로 둡니다. 필요 없는 부분은 나중에 정리)
         document.addEventListener("DOMContentLoaded", function() {
-            // ... (이전 MindAR.js 관련 UI 토글 로직은 이제 필요 없습니다. 주석 처리하거나 삭제합니다.)
+            // (이전 MindAR.js UI 토글 로직은 이미 주석 처리되었으므로 그대로 둡니다.)
+            // const list = ["glasses1", "glasses2", "hat1", "hat2", "earring"];
+            // const visibles = [false, false, false, false, false];
+            // ... (생략) ...
 
-            // 탭 바 로직은 그대로 유지
+            // 탭 바 로직 (그대로 유지)
             const tabs = [
                 { id: "tabGallery", url: "gallery.html", text: "갤러리", icon: "assets/gallery.svg" },
                 { id: "tabStamp", url: "stamp.html", text: "스탬프", icon: "assets/stamp.svg" },
@@ -330,19 +332,150 @@
             });
             // 탭 바 로직 끝
 
-            // AR.js 평면 인식 관련 이벤트 리스너 (선택 사항: 디버깅용)
+            // ⭐ 여기에 sceneEl 선언과 AR.js 관련 모든 JavaScript 코드를 배치합니다. ⭐
             const sceneEl = document.querySelector('a-scene');
+
             sceneEl.addEventListener('arReady', () => {
                 console.log("AR.js Plane detection ready!");
             });
             sceneEl.addEventListener('arError', (err) => {
                 console.error("AR.js Error:", err);
             });
-        });
+
+            // A-Frame 씬 로드 후 평면 인식을 위한 이벤트 리스너 추가
+            sceneEl.addEventListener('loaded', function () { // this는 sceneEl을 가리킵니다.
+                const arAnchor = document.querySelector('#ar-anchor');
+                let arModel = arAnchor.querySelector('a-gltf-model');
+
+                // 평면 인식이 시작될 때 호출 (이미 위에 등록되어 있으므로 중복 가능성 -> arReady 이벤트를 한 곳에 모으는 것이 좋음)
+                // this.addEventListener('arReady', function () {
+                //     console.log("AR.js ready for plane detection.");
+                // });
+
+                // 화면 탭(터치)으로 AR 객체 배치
+                document.body.addEventListener('click', function (event) {
+                    // AR.js가 평면을 감지했을 때만 실행
+                    // sceneEl은 이 스코프에서 접근 가능합니다.
+                    if (sceneEl.hasLoaded && arAnchor.object3D.visible) {
+                        console.log("Existing AR model detected, no new placement.");
+                        return;
+                    }
+
+                    // AR.js 평면 인식 성공 시 앵커 위치 이동 및 모델 표시
+                    // 간단한 테스트를 위해 arAnchor를 보이게만 합니다.
+                    arAnchor.setAttribute('visible', true);
+                    arModel.setAttribute('visible', true);
+                    console.log("AR model placed on detected surface.");
+                });
+            });
+        }); // DOMContentLoaded 닫힘
     </script>
+
     <style>
-        /* ... 기존 스타일 유지 (옵션 패널, 탭 바 스타일 등) ... */
-        /* mindar-face 관련 UI (옵션 패널)는 필요 없으므로 제거하거나 숨길 수 있습니다. */
+        body {
+                        margin: 0;
+                    }
+        .example-container {
+                        overflow: hidden;
+                        position: absolute;
+                        width: 100%;
+                        height: 100%;
+                    }
+        .options-panel {
+                        position: fixed;
+                        left: 0;
+                        top: 0;
+                        z-index: 2;
+                        padding: 10px;
+                        display: flex;
+                        gap: 10px;
+                    }
+        .options-panel img {
+                        border: solid 2px;
+                        width: 50px;
+                        height: 50px;
+                        object-fit: cover;
+                        cursor: pointer;
+                    }
+        .options-panel img.selected {
+                        border-color: green;
+                    }
+
+        /* ⭐ 카메라 전환 버튼 스타일은 이제 필요 없으므로 제거하거나 주석 처리합니다. ⭐ */
+        /* #cameraToggleButton {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 1em;
+    cursor: pointer;
+    color: #333;
+    transition: background-color 0.2s, border-color 0.2s;
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    z-index: 3;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+#cameraToggleButton:hover {
+    background-color: rgba(240, 240, 240, 0.9);
+    border-color: #aaa;
+} */
+
+        /* --- 탭 바 스타일 --- */
+        .bottom-tabs {
+                        position: fixed;
+                        left: 0; bottom: 0;
+                        width: 100%;
+                        height: 70px;
+                        background-color: #f0f0f0;
+                        z-index: 2;
+                        display: flex;
+                        justify-content: space-around;
+                        align-items: center;
+                        padding: 0;
+                        box-sizing: border-box;
+                        border-top: 1px solid #ddd;
+                    }
+        .bottom-tabs button {
+                        background-color: transparent;
+                        color: #000;
+                        border: none;
+                        padding: 5px;
+                        cursor: pointer;
+                        font-size: 12px;
+                        flex-grow: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        text-align: center;
+                        height: 100%;
+                        transition: color 0.2s;
+                        user-select: none;
+                    }
+        .bottom-tabs button img {
+                        width: 30px;
+                        height: 30px;
+                        object-fit: contain;
+                        margin-bottom: 2px;
+                        filter: grayscale(100%);
+                        transition: filter 0.2s;
+                    }
+
+        .bottom-tabs button.selected {
+                        color: #ff8c00;
+                    }
+        .bottom-tabs button.selected img {
+                        filter: none;
+                    }
+
+        .bottom-tabs button:hover:not(.selected) {
+                        background-color: rgba(0, 0, 0, 0.05);
+                    }
+        .bottom-tabs button:hover:not(.selected) img {
+                        filter: grayscale(70%);
+                    }
         .options-panel { display: none; } /* 임시로 숨김 */
     </style>
 </head>
@@ -361,49 +494,21 @@
              vr-mode-ui="enabled: false"
              renderer="logarithmicDepthBuffer: true;">
 
+        <a-assets>
+            <a-asset-item id="duck" src="assets/Duck.glb"></a-asset-item>
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="ar-anchor">
             <a-gltf-model src="#duck"
                           scale="0.7 0.7 0.7"
-                          position="-0.5 0.7 -0.2"   rotation="0 -105 -10"
-                          visible="false"> </a-gltf-model>
+                          position="-0.5 0.7 -0.2"
+                          rotation="0 -105 -10"
+                          visible="false">
+            </a-gltf-model>
         </a-entity>
     </a-scene>
 </div>
-
-<script>
-    // A-Frame 씬 로드 후 평면 인식을 위한 이벤트 리스너 추가
-    document.querySelector('a-scene').addEventListener('loaded', function () {
-        const arAnchor = document.querySelector('#ar-anchor');
-        let arModel = arAnchor.querySelector('a-gltf-model');
-
-        // 평면 인식이 시작될 때 호출
-        this.addEventListener('arReady', function () {
-            console.log("AR.js ready for plane detection.");
-        });
-
-        // 화면 탭(터치)으로 AR 객체 배치
-        document.body.addEventListener('click', function (event) {
-            // AR.js가 평면을 감지했을 때만 실행
-            if (sceneEl.hasLoaded && arAnchor.object3D.visible) { // arAnchor가 이미 평면에 붙어있다면
-                console.log("Existing AR model detected, no new placement.");
-                return;
-            }
-
-            // A-Frame 씬에 'arjs-hit-testing' 컴포넌트를 추가하여 Raycasting 활성화
-            // (이 기능은 AR.js에서 자동으로 처리될 수 있음)
-
-            // AR.js 평면 인식 성공 시 앵커 위치 이동 및 모델 표시
-            // AR.js 평면 인식은 자동으로 카메라 위치를 추적하며,
-            // 화면을 탭했을 때 AR.js 내부적으로 hit-test를 수행하여 앵커 위치를 조정합니다.
-            // 명시적으로 평면을 탭하는 로직을 구현해야 한다면, AR.js 문서를 참고하여 raycasting 구현 필요
-            // 간단한 테스트를 위해 arAnchor를 보이게만 합니다.
-            arAnchor.setAttribute('visible', true);
-            arModel.setAttribute('visible', true);
-            console.log("AR model placed on detected surface.");
-        });
-    });
-</script>
 </body>
 </html>
