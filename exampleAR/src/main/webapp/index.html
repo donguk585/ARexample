@@ -279,7 +279,6 @@
 <!--</body>-->
 <!--</html>-->
 
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -314,9 +313,9 @@
             color: #333;
             transition: background-color 0.2s, border-color 0.2s;
             position: fixed;
-            right: 10px; /* 오른쪽에서 10px */
-            top: 10px;   /* 위에서 10px */
-            z-index: 3;  /* 다른 요소 위에 오도록 z-index 설정 */
+            right: 10px;
+            top: 10px;
+            z-index: 3;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         #cameraToggleButton:hover {
@@ -397,7 +396,7 @@
         <button id="tabMy"></button>
     </div>
 
-    <a-scene mindar-face="cameraFacingMode: environment;"
+    <a-scene mindar-face
              embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true"
              vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false"
              loading-screen="enabled: false">
@@ -413,14 +412,17 @@
 
         <a-camera active="true" position="0 0 0" look-controls="enabled: false">
             <a-gltf-model src="#duck"
-                          position="-0.3 -0.6 -2"   scale="0.25 0.25 0.25"       rotation="0 -90 0">         </a-gltf-model>
+                          position="-0.4 -0.7 -2"
+                          scale="0.25 0.25 0.25"
+                          rotation="0 -90 0">
+            </a-gltf-model>
         </a-camera>
     </a-scene>
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // 탭 바 로직
+        // 탭 바 로직 (이전과 동일)
         const tabs = [
             { id: "tabGallery", url: "gallery.html", text: "갤러리", icon: "assets/gallery.svg" },
             { id: "tabStamp", url: "stamp.html", text: "스탬프", icon: "assets/stamp.svg" },
@@ -456,43 +458,21 @@
                 document.querySelectorAll('.bottom-tabs button').forEach(btn => {
                     btn.classList.remove('selected');
                 });
-                button.classList.add('selected');
+                button.classList.add("selected");
                 if (tab.url) {
                     window.location.href = tab.url;
                 }
             });
         });
 
-        // MindAR 씬 초기화 및 이벤트 리스너
+        // MindAR 씬과 카메라 전환 로직
         const sceneEl = document.querySelector('a-scene');
         const cameraToggleButton = document.querySelector("#cameraToggleButton");
-        // 초기 카메라 상태 (MindAR 설정과 일치시켜 후면으로 시작)
-        let currentCameraFacingMode = 'environment'; // 'environment' (후면) 또는 'user' (전면)
 
-        // 카메라 전환 함수
-        const switchCamera = () => {
-            currentCameraFacingMode = (currentCameraFacingMode === 'environment') ? 'user' : 'environment';
-            sceneEl.setAttribute('mindar-face', `cameraFacingMode: ${currentCameraFacingMode};`);
+        let currentCameraFacingMode = 'environment';
 
-            // 버튼 텍스트 업데이트
-            if (currentCameraFacingMode === 'user') {
-                cameraToggleButton.textContent = "후면 카메라로 전환";
-                console.log("[Camera Switch] 카메라가 전면 (User-facing)으로 전환되었습니다.");
-            } else {
-                cameraToggleButton.textContent = "전면 카메라로 전환";
-                console.log("[Camera Switch] 카메라가 후면 (Environment-facing)으로 전환되었습니다.");
-            }
-
-            // 카메라 전환 후 MindAR가 다시 스트림을 잡도록 약간의 지연 후 로그
-            setTimeout(() => {
-                logCurrentCameraInfo();
-            }, 1000); // 1초 후 현재 카메라 정보 다시 로깅
-        };
-
-        // 현재 활성화된 카메라 정보를 콘솔에 로깅하는 함수
         const logCurrentCameraInfo = () => {
-            try {
-                // MindAR 인스턴스에 접근하여 현재 비디오 트랙의 설정을 확인
+            if (sceneEl.components['mindar-face'] && sceneEl.components['mindar-face'].data && sceneEl.components['mindar-face'].data.video) {
                 const video = sceneEl.components['mindar-face'].data.video;
                 if (video && video.srcObject) {
                     const tracks = video.srcObject.getVideoTracks();
@@ -504,35 +484,71 @@
                             console.warn("[Camera Info] 카메라 facingMode 정보를 가져올 수 없습니다. (브라우저 정책 등으로 인해)");
                         }
                     } else {
-                        console.warn("[Camera Info] 비디오 스트림 객체가 없거나 유효하지 않습니다.");
+                        console.warn("[Camera Info] 비디오 스트림 객체(srcObject)가 없습니다.");
                     }
                 } else {
-                    console.warn("[Camera Info] MindAR 비디오 요소에 접근할 수 없습니다.");
+                    console.warn("[Camera Info] MindAR 비디오 요소가 아직 생성되지 않았거나 유효하지 않습니다.");
                 }
-            } catch (e) {
-                console.error("[Camera Info] 카메라 facingMode 정보를 가져오는 중 에러 발생:", e);
+            } else {
+                console.warn("[Camera Info] MindAR-Face 컴포넌트가 아직 완전히 준비되지 않았습니다.");
             }
         };
 
-        // 버튼 클릭 이벤트 리스너
-        cameraToggleButton.addEventListener('click', switchCamera);
+        const switchCamera = async () => {
+            const mindarComponent = sceneEl.components['mindar-face'];
+            if (!mindarComponent) {
+                console.error("MindAR-Face 컴포넌트를 찾을 수 없습니다.");
+                return;
+            }
+
+            currentCameraFacingMode = (currentCameraFacingMode === 'environment') ? 'user' : 'environment';
+            console.log(`[Camera Switch] ${currentCameraFacingMode === 'user' ? '전면' : '후면'} 카메라로 전환 시도...`);
+
+            try {
+                mindarComponent.pause();
+                sceneEl.setAttribute('mindar-face', 'cameraFacingMode', currentCameraFacingMode);
+                mindarComponent.play();
+
+                if (currentCameraFacingMode === 'user') {
+                    cameraToggleButton.textContent = "후면 카메라로 전환";
+                } else {
+                    cameraToggleButton.textContent = "전면 카메라로 전환";
+                }
+
+            } catch (e) {
+                console.error("[Camera Switch Error] 카메라 전환 중 오류 발생:", e);
+                alert("카메라 전환 중 오류가 발생했습니다. 브라우저 권한을 확인해주세요.");
+                currentCameraFacingMode = (currentCameraFacingMode === 'environment') ? 'user' : 'environment';
+            }
+        };
 
         sceneEl.addEventListener('loaded', () => {
-            console.log("A-Frame Scene loaded.");
+            console.log("A-Frame Scene loaded. Initializing MindAR with rear camera.");
+            const mindarComponent = sceneEl.components['mindar-face'];
+            if (mindarComponent) {
+                sceneEl.setAttribute('mindar-face', 'cameraFacingMode', 'environment');
+                cameraToggleButton.textContent = "전면 카메라로 전환";
+                console.log("[Initial Camera] MindAR initialized with environment camera.");
+            } else {
+                console.error("MindAR-Face 컴포넌트가 로드되지 않았습니다.");
+            }
         });
 
-        // AR 시스템이 준비되면 초기 카메라 정보 로깅
+        cameraToggleButton.addEventListener('click', switchCamera);
+
         sceneEl.addEventListener('arReady', () => {
             console.log("MindAR AR system is ready. Camera should be active!");
-            logCurrentCameraInfo(); // 초기 AR Ready 시점에 카메라 정보 로깅
+        });
+
+        sceneEl.addEventListener('sourceOpen', () => {
+            console.log("MindAR video source opened!");
+            logCurrentCameraInfo();
         });
 
         sceneEl.addEventListener('arError', (err) => {
             console.error("MindAR Error:", err);
+            alert("AR 시스템 오류 발생: " + err.message);
         });
-
-        // 페이지 로드 시 초기 카메라 정보 로깅 (혹시 arReady 전에 카메라가 켜질 경우)
-        logCurrentCameraInfo();
     });
 </script>
 </body>
